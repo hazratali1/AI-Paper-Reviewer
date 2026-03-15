@@ -4,6 +4,9 @@ __pycache__/
 *$py.class
 venv/
 .env
+.env.example
+.env.local
+.env.*.local
 uploaded_papers/
 faiss/
 
