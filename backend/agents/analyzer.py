@@ -6,7 +6,8 @@ import os
 from groq import Groq
 from typing import Dict
 
-client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
+def get_client():
+    return Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
 
 SYSTEM_PROMPT = """You are an expert academic research analyst. 
 Given a research paper's text, extract and return a structured analysis in the following JSON format:
@@ -29,6 +30,9 @@ def analyze_paper(paper: Dict[str, str]) -> Dict:
     Analyze a parsed paper dict and return structured analysis.
     paper keys: title, abstract, introduction, method, results, conclusion
     """
+    api_key = os.environ.get("GROQ_API_KEY", "")
+    print(f"[DEBUG] Using Groq API Key starting with: {api_key[:10]}...")
+    
     # Build a concise paper snapshot
     paper_text = f"""
 TITLE: {paper.get('title', 'N/A')}
@@ -49,6 +53,7 @@ CONCLUSION:
 {paper.get('conclusion', '')[:800]}
 """.strip()
 
+    client = get_client()
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[

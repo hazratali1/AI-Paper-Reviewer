@@ -7,7 +7,8 @@ import json
 from groq import Groq
 from typing import Dict
 
-client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
+def get_client():
+    return Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
 
 SYSTEM_PROMPT = """You are a senior reviewer for a top-tier AI/ML conference (NeurIPS, ICML, ICLR).
 Generate a thorough academic peer review of the given paper in the following JSON format:
@@ -51,6 +52,7 @@ KNOWN LIMITATIONS:
 {analysis.get('limitations', 'Not stated')}
 """.strip()
 
+    client = get_client()
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
