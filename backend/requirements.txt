@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+python-multipart
+groq
+pymupdf
+pdfminer.six
+faiss-cpu
+sentence-transformers
+duckduckgo-search
+semanticscholar
+arxiv
+httpx
+beautifulsoup4
+python-dotenv
+numpy
