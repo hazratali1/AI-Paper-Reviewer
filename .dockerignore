@@ -1,0 +1,29 @@
+# VCS
+.git
+.gitignore
+
+# Python cache and virtual environments
+**/__pycache__/
+**/*.py[cod]
+**/*.pyo
+backend/venv/
+.venv/
+venv/
+
+# Local secrets
+**/.env
+**/.env.*
+
+# Runtime/generated artifacts
+backend/uploaded_papers/
+backend/faiss/
+
+# Frontend and node artifacts (not needed for backend image)
+frontend/.next/
+frontend/node_modules/
+
+# Misc
+*.log
+.DS_Store
+.vscode/
+.idea/

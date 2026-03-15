@@ -5,6 +5,7 @@ import os
 import uuid
 import json
 import shutil
+import time
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -33,6 +34,35 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 # In-memory store: paper_id -> parsed paper data
 paper_store: dict = {}
 
+# Auto-cleanup window for RAG memory (7 days)
+RAG_RETENTION_SECONDS = 7 * 24 * 60 * 60
+
+
+def cleanup_expired_rag_memory() -> None:
+    """Delete uploaded paper data and in-memory entries older than retention period."""
+    now = time.time()
+
+    # Clean on-disk uploaded paper folders (including FAISS indexes)
+    for paper_dir in UPLOAD_DIR.iterdir():
+        if not paper_dir.is_dir():
+            continue
+        try:
+            age_seconds = now - paper_dir.stat().st_mtime
+            if age_seconds > RAG_RETENTION_SECONDS:
+                shutil.rmtree(paper_dir, ignore_errors=True)
+        except Exception as e:
+            print(f"[Warning] Failed to clean expired paper dir {paper_dir}: {e}")
+
+    # Clean in-memory paper cache entries by creation time
+    expired_ids = []
+    for paper_id, data in paper_store.items():
+        created_at = data.get("created_at", now)
+        if now - created_at > RAG_RETENTION_SECONDS:
+            expired_ids.append(paper_id)
+
+    for paper_id in expired_ids:
+        paper_store.pop(paper_id, None)
+
 
 class AnalyzeRequest(BaseModel):
     paper_id: str
@@ -46,6 +76,8 @@ async def upload_paper(file: UploadFile = File(...)):
     """
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+
+    cleanup_expired_rag_memory()
 
     # Check file size (max 20MB)
     contents = await file.read()
@@ -79,6 +111,7 @@ async def upload_paper(file: UploadFile = File(...)):
         "parsed": parsed,
         "pdf_path": str(pdf_path),
         "paper_dir": str(paper_dir),
+        "created_at": time.time(),
     }
 
     return JSONResponse({
@@ -96,6 +129,8 @@ async def analyze_paper_endpoint(request: AnalyzeRequest):
     Returns the complete analysis report.
     """
     paper_id = request.paper_id
+    cleanup_expired_rag_memory()
+
     if paper_id not in paper_store:
         raise HTTPException(status_code=404, detail="Paper not found. Please upload first.")
 
@@ -147,6 +182,8 @@ async def analyze_paper_endpoint(request: AnalyzeRequest):
 @router.get("/paper/{paper_id}")
 async def get_paper_info(paper_id: str):
     """Get basic info about an uploaded paper."""
+    cleanup_expired_rag_memory()
+
     if paper_id not in paper_store:
         raise HTTPException(status_code=404, detail="Paper not found.")
     parsed = paper_store[paper_id]["parsed"]
@@ -160,6 +197,8 @@ async def get_paper_info(paper_id: str):
 @router.delete("/paper/{paper_id}")
 async def delete_paper(paper_id: str):
     """Delete an uploaded paper and its index."""
+    cleanup_expired_rag_memory()
+
     if paper_id not in paper_store:
         raise HTTPException(status_code=404, detail="Paper not found.")
     data = paper_store.pop(paper_id)
