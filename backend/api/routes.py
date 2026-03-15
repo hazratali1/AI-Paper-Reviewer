@@ -10,7 +10,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
-from groq import AuthenticationError, APIError
+from groq import AuthenticationError, APIError, RateLimitError
 from tools.pdf_parser import parse_pdf, chunk_text
 from rag.embeddings import create_paper_index
 from agents.analyzer import analyze_paper
@@ -136,6 +136,8 @@ async def analyze_paper_endpoint(request: AnalyzeRequest):
 
     except AuthenticationError:
         raise HTTPException(status_code=401, detail="Invalid Groq API Key. Please check your .env file.")
+    except RateLimitError:
+        raise HTTPException(status_code=429, detail="Groq API Rate Limit Reached. Please wait a moment or upgrade your plan.")
     except APIError as e:
         raise HTTPException(status_code=502, detail=f"Groq API Error: {str(e)}")
     except Exception as e:

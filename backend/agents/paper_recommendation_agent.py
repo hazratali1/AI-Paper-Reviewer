@@ -2,14 +2,10 @@
 Paper Recommendation Agent: Retrieves and ranks the top 5 most relevant papers,
 generating a tailored summary and relevance explanation for each.
 """
-import os
 import json
-from groq import Groq
 from typing import Dict, List
+from tools.llm_client import get_groq_client
 from tools.search import unified_paper_search
-
-def get_client():
-    return Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
 
 SYSTEM_PROMPT = """You are an expert research librarian. Given an uploaded research paper and
 a list of candidate related papers, select the TOP 5 most relevant papers and explain why
@@ -62,7 +58,7 @@ Select and rank the top 5 most relevant papers from the candidates above.
 If fewer than 5 candidates are available, you may generate plausible recommendations.
 """
 
-    client = get_client()
+    client = get_groq_client()
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[

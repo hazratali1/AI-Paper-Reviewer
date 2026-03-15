@@ -2,13 +2,9 @@
 Reviewer Agent: Generates structured peer-review feedback
 in the style of a top academic conference like NeurIPS or ICML.
 """
-import os
 import json
-from groq import Groq
 from typing import Dict
-
-def get_client():
-    return Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
+from tools.llm_client import get_groq_client
 
 SYSTEM_PROMPT = """You are a senior reviewer for a top-tier AI/ML conference (NeurIPS, ICML, ICLR).
 Generate a thorough academic peer review of the given paper in the following JSON format:
@@ -52,7 +48,7 @@ KNOWN LIMITATIONS:
 {analysis.get('limitations', 'Not stated')}
 """.strip()
 
-    client = get_client()
+    client = get_groq_client()
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[

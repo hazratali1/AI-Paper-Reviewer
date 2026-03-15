@@ -3,13 +3,9 @@ Novelty Detection Agent: Compares the uploaded paper's contributions
 with retrieved similar papers to detect novel vs overlapping work.
 Outputs a novelty score (0-10) and detailed breakdown.
 """
-import os
 import json
-from groq import Groq
 from typing import Dict, List
-
-def get_client():
-    return Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
+from tools.llm_client import get_groq_client
 
 SYSTEM_PROMPT = """You are an expert at analyzing research novelty and originality.
 Given an uploaded paper's contributions and a set of related existing papers,
@@ -66,7 +62,7 @@ RELATED / EXISTING PAPERS:
 Assess the novelty of the uploaded paper relative to the existing work above.
 """
 
-    client = get_client()
+    client = get_groq_client()
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[

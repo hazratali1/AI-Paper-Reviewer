@@ -2,12 +2,9 @@
 Paper Analyzer Agent: Summarizes the paper, extracts contributions,
 identifies the research problem, method, and results.
 """
-import os
-from groq import Groq
+import json
 from typing import Dict
-
-def get_client():
-    return Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
+from tools.llm_client import get_groq_client
 
 SYSTEM_PROMPT = """You are an expert academic research analyst. 
 Given a research paper's text, extract and return a structured analysis in the following JSON format:
@@ -25,13 +22,11 @@ Return ONLY valid JSON. Ensure 'future_scope' contains all possible forward-look
 Return ONLY valid JSON, no markdown, no extra text."""
 
 
-def analyze_paper(paper: Dict[str, str]) -> Dict:
+def analyze_paper(paper: Dict) -> Dict:
     """
     Analyze a parsed paper dict and return structured analysis.
     paper keys: title, abstract, introduction, method, results, conclusion
     """
-    api_key = os.environ.get("GROQ_API_KEY", "")
-    print(f"[DEBUG] Using Groq API Key starting with: {api_key[:10]}...")
     
     # Build a concise paper snapshot
     paper_text = f"""
@@ -53,7 +48,7 @@ CONCLUSION:
 {paper.get('conclusion', '')[:800]}
 """.strip()
 
-    client = get_client()
+    client = get_groq_client()
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
@@ -64,7 +59,6 @@ CONCLUSION:
         max_tokens=1024,
     )
 
-    import json
     content = response.choices[0].message.content.strip()
     # Strip markdown code fences if present
     if content.startswith("```"):

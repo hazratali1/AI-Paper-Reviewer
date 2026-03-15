@@ -2,14 +2,10 @@
 Literature Review Agent: Searches for related papers via Semantic Scholar / arXiv,
 then synthesizes a structured literature review using Groq.
 """
-import os
 import json
-from groq import Groq
 from typing import Dict, List
+from tools.llm_client import get_groq_client
 from tools.search import unified_paper_search
-
-def get_client():
-    return Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
 
 SYSTEM_PROMPT = """You are an expert academic writer specializing in literature reviews.
 Given a research topic and a set of related papers, write a structured 3-4 paragraph
@@ -57,7 +53,7 @@ RELATED PAPERS FOUND:
 Write a comprehensive literature review synthesizing the above information.
 """
 
-    client = get_client()
+    client = get_groq_client()
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
