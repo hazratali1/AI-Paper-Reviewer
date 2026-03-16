@@ -38,6 +38,14 @@ paper_store: dict = {}
 RAG_RETENTION_SECONDS = 7 * 24 * 60 * 60
 
 
+def should_build_rag_index_on_upload() -> bool:
+    """Enable index build by env override; default to off on Hugging Face Spaces."""
+    env_value = os.getenv("RAG_BUILD_ON_UPLOAD")
+    if env_value is not None:
+        return env_value.strip().lower() in {"1", "true", "yes", "on"}
+    return not bool(os.getenv("SPACE_ID"))
+
+
 def cleanup_expired_rag_memory() -> None:
     """Delete uploaded paper data and in-memory entries older than retention period."""
     now = time.time()
@@ -98,14 +106,16 @@ async def upload_paper(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PDF parsing failed: {str(e)}")
 
-    # Build RAG index from paper chunks
+    # Build RAG index from paper chunks. This is heavy and can time out on free Spaces.
     full_text = parsed.get("full_text", "")
-    if full_text:
+    if full_text and should_build_rag_index_on_upload():
         chunks = chunk_text(full_text, chunk_size=512, overlap=64)
         try:
             create_paper_index(chunks, str(paper_dir / "faiss"))
         except Exception as e:
             print(f"[Warning] RAG index build failed: {e}")
+    elif full_text:
+        print("[Info] Skipping RAG index build on upload.")
 
     paper_store[paper_id] = {
         "parsed": parsed,
