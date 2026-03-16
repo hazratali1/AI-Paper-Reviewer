@@ -46,6 +46,14 @@ def should_build_rag_index_on_upload() -> bool:
     return not bool(os.getenv("SPACE_ID"))
 
 
+def should_use_lightweight_pipeline() -> bool:
+    """Use a reduced analysis pipeline on Spaces unless explicitly disabled."""
+    env_value = os.getenv("LIGHTWEIGHT_PIPELINE")
+    if env_value is not None:
+        return env_value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(os.getenv("SPACE_ID"))
+
+
 def cleanup_expired_rag_memory() -> None:
     """Delete uploaded paper data and in-memory entries older than retention period."""
     now = time.time()
@@ -154,18 +162,36 @@ async def analyze_paper_endpoint(request: AnalyzeRequest):
         # Step 2: Generate peer review
         review = review_paper(parsed, analysis)
 
-        # Step 3: Search related papers
-        query = f"{parsed.get('title', '')} {analysis.get('research_problem', '')}"
-        related_papers = unified_paper_search(query[:200], limit=10)
+        if should_use_lightweight_pipeline():
+            # Keep Spaces responsive by avoiding the heaviest multi-call stages.
+            lit_review = {
+                "literature_review": "Lightweight mode is enabled on this deployment to avoid timeouts. Enable full mode for complete literature synthesis.",
+                "research_trends": [],
+                "existing_limitations": [],
+                "key_references": [],
+            }
+            novelty = {
+                "novelty_score": 0,
+                "verdict": "Pending Full Analysis",
+                "novel_contributions": [],
+                "overlapping_aspects": [],
+                "innovation_type": "Not computed in lightweight mode",
+                "comparison_summary": "Novelty comparison is skipped in lightweight mode.",
+            }
+            recommendations = {"recommended_papers": []}
+        else:
+            # Step 3: Search related papers
+            query = f"{parsed.get('title', '')} {analysis.get('research_problem', '')}"
+            related_papers = unified_paper_search(query[:200], limit=10)
 
-        # Step 4: Literature review
-        lit_review = generate_literature_review(parsed, analysis)
+            # Step 4: Literature review
+            lit_review = generate_literature_review(parsed, analysis)
 
-        # Step 5: Novelty detection
-        novelty = detect_novelty(parsed, analysis, related_papers)
+            # Step 5: Novelty detection
+            novelty = detect_novelty(parsed, analysis, related_papers)
 
-        # Step 6: Paper recommendations
-        recommendations = recommend_papers(parsed, analysis)
+            # Step 6: Paper recommendations
+            recommendations = recommend_papers(parsed, analysis)
 
         report = {
             "paper_id": paper_id,
